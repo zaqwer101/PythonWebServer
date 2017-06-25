@@ -7,27 +7,25 @@
 
 import threading
 import socket
-
 import time
+
+header = b"HTTP/1.1 200 OK\r\nServer: zaqwer101\r\nContent-Type: text/html\r\n\r\n"
 
 
 class Worker(threading.Thread):
-
     def die(self):
         self.conn.close()
         workers.remove(self)
-        print("Worker убит: " + str(self.id))
-        # print("-----------------------------------------------------------------------------------------------")
+        print("Worker погиб:" + str(self.id))
 
     def work(self):
         try:
+            print("Worker ожидает подключения:" + str(self.id))
             self.conn, self.addr = self.s.accept()
-            self.conn.send(b"HTTP/1.1 200 OK\r\nServer: zaqwer101\r\nContent-Type: text/html\r\n\r\n")
-            # self.conn.send("Content-Type: text/html".encode())
-            print("Worker принял подключение: " + str(self.id))
-            self.conn.send(html.encode())
+            print("Worker принял подключение:" + str(self.id))
+            self.conn.send(header + html.encode())
+            time.sleep(1)
             self.i = self.i + 1
-
             self.die()
         except Exception as e:
             print(e)
@@ -42,29 +40,30 @@ class Worker(threading.Thread):
         self.s = s
 
     def run(self):
-        print("Worker ожидает подключения: " + str(self.id))
         self.work()
 
 
 # --------------------------------------------------------------------------------------------------------------------
 
 
-workers = []
-port = 8556
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-i = 0
-sock.bind(("", port))
-sock.listen(1000)
+workers = []    # Массив обработчиков
+port = 8556     # Порт сервера
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Создание сокета
+i = 0   # Счетчик количества рабочих
+sock.bind(("", port))   # Бинд сокета к IP и порту
+sock.listen(1000)       # Указать сокету слушать до 1000 подключений одновременно
 
-work_file = open('index.html')
+work_file = open('index.html') # Открыть и обработать
+html = work_file.read()        # файл с сайтом
 
-html = work_file.read()
-
-while True :
-    if len(workers) < 3:
-        worker = Worker(sock, i, html)
+##
+# Бесконечный цикл работы сервера. Если рабочих < 20 - создает новых
+# Все рабочие хранятся в списке workers
+##
+while True:
+    if len(workers) < 20:
+        worker = Worker(sock, i, html) # Рабочему передается сокет, порядковый номер и контент, который он отдает
+                                       # клиентам
         worker.start()
         workers.append(worker)
         i = i + 1
-        # print("Worker начал работу!:" + str(worker.id))
-
